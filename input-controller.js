@@ -173,7 +173,7 @@
 
                 if(!wasActive && isActive){
                     this._dispatchActionEvent(
-                        this.ACTION_ACTIVED,
+                        this.ACTION_ACTIVATED,
                         actionName
                     );
                 }
@@ -210,7 +210,7 @@
 
                 if(wasActive && !isActive){
                     this._dispatchActionEvent(
-                        this.ACTION_DEACTIVED,
+                        this.ACTION_DEACTIVATED,
                         actionName
                     );
                 }
