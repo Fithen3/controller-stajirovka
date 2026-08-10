@@ -121,6 +121,10 @@
         }
 
         isActionActive(actionName){
+            if(!this.enabled || !this.focused){
+                return false;
+            }
+            
             const action = this._actions.get(actionName);
 
             if (!action || !action.enabled){
