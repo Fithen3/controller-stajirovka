@@ -19,10 +19,10 @@
 
         right:{
             keys: [39,68]
-        }
+        },
         up:{
             keys: [38,87]
-        }
+        },
         down:{
             keys: [40,83]
         }
@@ -111,6 +111,10 @@
             positionX = 0;
         }
 
+        if(positionX > maxX){
+            positionX = maxX;
+        }
+        
         if (positionY < 0){
             positionY = 0;
         }
