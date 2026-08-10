@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тестовое Контроллер</title>
+    <style>
+        #playground{
+            position: relative;
+            width: 600px;
+            height: 200px;
+            border: 1px solid black;
+            overflow: hidden;
+    }    
+        #player{
+            position: absolute;
+            left: 100px;
+            width: 50px;
+            height: 50px;
+            background: blue;
+        }
+        #player.jump{
+            background: red;
+        }
+    </style>
+</head>
+<body>
+
+<button id = "attach">attach</button>
+<button id = "detach">detach</button>
+<button id = "enable-controller">enableAction</button>
+<button id = "disable-controller">disableAction</button>
+<button id = "Jump">Jump</button>
+
+<div is = "result"></div>
+
+<div id = "playground">
+    <div id = "player"></div>
+</div>
+
+<script src = "input-controller.js"></script>
+<script src = "input-controller-test.js"></script>
+
+</body>
+</html>
