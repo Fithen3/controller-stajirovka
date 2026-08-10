@@ -20,9 +20,16 @@
         right:{
             keys: [39,68]
         }
+        up:{
+            keys: [38,87]
+        }
+        down:{
+            keys: [40,83]
+        }
     }, target);
 
     let positionX = 100;
+    let positionY = 0;
 
     const speed = 4;
 
@@ -89,17 +96,31 @@
             positionX+=speed;
         }
 
+        if(controller.isActionActive('up')){
+            positionY-=speed;
+        }
+
+        if(controller.isActionActive('down')){
+            positionY+=speed;
+        }
+
         const maxX = playground.clientWidth-player.offsetWidth;
+        const maxY = playground.clientHeight-player.offsetHeight;
 
         if (positionX < 0){
             positionX = 0;
         }
 
-        if(positionX > maxX){
-            positionX = maxX;
+        if (positionY < 0){
+            positionY = 0;
+        }
+
+        if(positionY > maxY){
+            positionY = maxY;
         }
 
         player.style.left = positionX + 'px';
+        player.style.top = positionY + 'px';
         requestAnimationFrame(update);
     }
     requestAnimationFrame(update);
