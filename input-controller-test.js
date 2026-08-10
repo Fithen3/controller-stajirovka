@@ -54,7 +54,7 @@
         result.textContent = 'Контроллер деактивирован';
     });
 
-    Button.addEventListener('click', function(){
+    JumpButton.addEventListener('click', function(){
         controller.bindActions({
             jump: {
                 keys: [32]
