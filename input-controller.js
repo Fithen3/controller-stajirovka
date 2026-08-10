@@ -7,19 +7,19 @@
             this.focused = document.hasFocus();
 
             Object.defineProperties(this, {
-                ACTION_ACTIVED: {
+                ACTION_ACTIVATED: {
                     value: 'input-controller:active-activated',
                     writable: false,
                     configurable: false
                 },
 
-                ACTION_DEACTIVED: {
+                ACTION_DEACTIVATED: {
                     value: 'input-controller:active-deactivated',
                     writable: false,
                     configurable: false
                 }
             });
-            this.target = null;
+            this._target = null;
             this._actions = new Map();
             this._pressedKeys = new Set();
             
@@ -127,8 +127,8 @@
                 return false;
             }
 
-            for (const kayCode of action.keys){
-                if (this._pressedKeys.has(kayCode)){
+            for (const keyCode of action.keys){
+                if (this._pressedKeys.has(keyCode)){
                     return true;
                 }
             }
@@ -148,7 +148,7 @@
                 return;
             }
 
-            const keyCode = event.kayCode;
+            const keyCode = event.keyCode;
 
             if(this._pressedKeys.has(keyCode)){
                 return;
@@ -217,7 +217,7 @@
             });
         }
 
-        _getActionStatesByKey(kayCode){
+        _getActionStatesByKey(keyCode){
             const states = new Map();
 
             this._actions.forEach((action,actionName) => {
@@ -244,7 +244,7 @@
                 detail: actionName
             });
 
-            this._target._dispatchEvent(event);
+            this._target.dispatchEvent(event);
         }
 
         _onWindowBlur(){
@@ -261,7 +261,7 @@
 
         _removeListeners(){
             if(this._target){
-                this._target._removeListener(
+                this._target.removeEventListener(
                     'keydown',
                     this._onKeyDown
                 );
