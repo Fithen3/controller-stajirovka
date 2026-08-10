@@ -35,7 +35,7 @@
     detachButton.addEventListener('click', function(){
         controller.detach();
 
-        player.classList.remove('');
+        player.classList.remove('jump');
 
         result.textContent = 'Контроллер отключен';
     });
@@ -49,7 +49,7 @@
     disableControllerButton.addEventListener('click', function(){
         controller.enabled = false;
 
-        player.classList.remove('');
+        player.classList.remove('jump');
 
         result.textContent = 'Контроллер деактивирован';
     });
