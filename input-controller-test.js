@@ -35,7 +35,7 @@
     detachButton.addEventListener('click', function(){
         controller.detach();
 
-        player.classList.remove('jump');
+        player.classList.remove('');
 
         result.textContent = 'Контроллер отключен';
     });
@@ -49,12 +49,12 @@
     disableControllerButton.addEventListener('click', function(){
         controller.enabled = false;
 
-        player.classList.remove('jump');
+        player.classList.remove('');
 
         result.textContent = 'Контроллер деактивирован';
     });
 
-    JumpButton.addEventListener('click', function(){
+    Button.addEventListener('click', function(){
         controller.bindActions({
             jump: {
                 keys: [32]
@@ -65,6 +65,14 @@
 
     target.addEventListener(
         controller.ACTION_ACTIVATED,
+        function(event){
+            if(event.detail === 'jump'){
+                player.classList.add('jump');
+            }
+        }
+    );
+    target.addEventListener(
+        controller.ACTION_DEACTIVATED,
         function(event){
             if(event.detail === 'jump'){
                 player.classList.remove('jump');
