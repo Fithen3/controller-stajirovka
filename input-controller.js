@@ -2,39 +2,38 @@
     'use strict';
 
     class InputController{
-        constructor(actionsToBind, target){
-            this.enabled = false;
-            this.focused = document.hasFocus();
-
-            Object.defineProperties(this, {
-                ACTION_ACTIVATED: {
-                    value: 'input-controller:active-activated',
-                    writable: false,
-                    configurable: false
-                },
-
-                ACTION_DEACTIVATED: {
-                    value: 'input-controller:active-deactivated',
-                    writable: false,
-                    configurable: false
-                }
-            });
+        constructor(actionsToBind, target, plugins){
+            this._enabled = false;
+            this.focused = document.hasFocus(target);
+            this.ACTION_ACTIVATED = 'input-controller:action-activated';
+            this.ACTION_DEACTIVATED = 'input-controller:action-deactivated';
+           
             this._target = null;
+            this._window = null;
             this._actions = new Map();
-            this._pressedKeys = new Set();
-            
-            this._onKeyDown = this._onKeyDown.bind(this);
-            this._onKeyUp = this._onKeyUp.bind(this);
+            this._actionStates = new Map();
+            this._plugins = new Map();
+
+            this._onPluginChange = this._onPluginChange.bind(this);
             this._onWindowBlur = this._onWindowBlur.bind(this);
             this._onWindowFocus = this._onWindowFocus.bind(this);
 
-            if(actionsToBind){
+            (plugins || []).forEach((plugin) => this.addPlugin(plugin));
+
+            if (actionsToBind){
                 this.bindActions(actionsToBind);
             }
-
             if(target){
                 this.attach(target);
             }
+        }
+
+        get enabled(){
+            return
+        }
+        set enabled(value){
+            this._enabled = Boolean(value);
+            this._refreshActionStates(false);
         }
 
         bindActions(actionsToBind){
@@ -43,51 +42,48 @@
             }
 
             Object.keys(actionsToBind).forEach((actionName) => {
-                const config = actionsToBind[actionName];
-
-                if(!config || !Array.isArray(config.keys)){
+                const settings = actionsToBind[actionName];
+                if(!settings || typeof settings !== 'object'){
                     return;
                 }
 
-                let action = this._actions.get(actionName);
-                if(!action){
-                    action = {
-                        keys: new Set(),
-                        enabled: true
-                    };
-                    this._actions.set(actionName, action)
-                }
-                config.keys.forEach((keyCode) => {
-                    const code = Number(keyCode);
-
-                    if(Number.isInteger(code)){
-                        action.keys.add(code);
-                    }
-                });
-
-                if(typeof config.enabled === 'boolean'){
-                    action.enabled = config.enabled;
-                }
+                const oldSettings = this._actions.get(actionName) || {enabled: true};
+                this._actions.set(
+                    actionName,
+                    Object.assign({}, oldSettings,settings)
+                );
             });
+
+            this._refreshActionStates(false);
         }
-        
+
+        addPlugin(plugin){
+            if(!isPlagin(plugin)){
+                throw new TypeError('Некорректный плагин ввода');
+            }
+
+            const oldPlugin = this._plugins.get(plugin.name);
+            if(oldPlugin === plugin){
+                return;
+            }
+
+            if(oldPlugin){
+                oldPlugin.detach();
+            }
+
+            this._plugins.set(plugin.name, plugin);
+            if(this._target){
+                plugin.attach(this._target, this._onPluginChange);
+            }
+            this._refreshActionStates(false);
+        }
+
         enableAction(actionName){
             const action = this._actions.get(actionName);
-
-            if (!action){
-                return;
+            if(action){
+                action.enabled = true;
+                this._refreshActionStates(false);
             }
-            action.enabled = true;
-        }
-
-        disableAction(actionName){
-            const action = this._actions.get(actionName);
-
-            if(!action){
-                return;
-            }
-
-            action.enabled = false;
         }
 
         attach(target, dontEnable){
@@ -95,18 +91,18 @@
                 return;
             }
 
-            if(this._target){
-                this._removeListeners();
-            }
-
+            this._removeListeners();
             this._target = target;
-            this._target.addEventListener('keydown', this._onKeyDown);
-            this._target.addEventListener('keyup', this._onKeyUp);
+            this._window = getWindow(target);
+            this.focused = hasFocus(target);
 
-            window.addEventListener('blur', this._onWindowBlur);
-            window.addEventListener('focus', this._onWindowFocus);
-
-            this.focused = document.hasFocus();
+            if(this.window){
+                this._window.addEventListener('blur', this._onWindowBlur);
+                this._window.addEventListener('focus', this._onWindowFocus);
+            }
+            this._plugins.forEach((plugin) => {
+                plugin.attach(target, this._onPluginChange);
+            });
 
             if(dontEnable !== true){
                 this.enabled = true;
@@ -114,25 +110,21 @@
         }
 
         detach(){
-            this._removeListeners();
-            this._pressedKeys.clear();
             this.enabled = false;
+            this._removeListeners();
             this._target = null;
+            this._window = null;
+            this.focused = false;
         }
 
         isActionActive(actionName){
-            if(!this.enabled || !this.focused){
-                return false;
-            }
-            
             const action = this._actions.get(actionName);
-
-            if (!action || !action.enabled){
+            if(!this.enabled || !this.focused || !action || action.enabled === false){
                 return false;
             }
 
-            for (const keyCode of action.keys){
-                if (this._pressedKeys.has(keyCode)){
+            for (const plugin of this._plugins.values()){
+                if(plugin.isActionActive(action, actionName)){
                     return true;
                 }
             }
@@ -140,153 +132,89 @@
         }
 
         isKeyPressed(keyCode){
-            if(!this.focused){
-                return false;
-            }
-
-            return this._pressedKeys.has(Number(keyCode));
+            const keyboard = this._plugins.get('keyboard');
+            return Boolean(
+                this.focused && keyboard &&  typeof keyboard.isKeyPressed === 'function' && keyboard.isKeyPressed(keyCode)
+            );               
         }
 
-        _onKeyDown(event){
-            if(!this.focused){
-                return;
-            }
+        _onPluginChange(){
+            this._refreshActionStates(true);         
+        }
 
-            const keyCode = event.keyCode;
-
-            if(this._pressedKeys.has(keyCode)){
-                return;
-            }
-
-            const previousStates = this._getActionStatesByKey(keyCode);
-
-            this._pressedKeys.add(keyCode);
-
-            if (!this.enabled){
-                return;
-            }
-
-            previousStates.forEach((wasActive, actionName) => {
-                const action = this._actions.get(actionName);
-
-                if(!action || !action.enabled){
-                    return
-                }
-
+        _refreshActionStates(shouldDispatch){
+            this._actions.forEach((action, actionName) => {
+                const wasActive = this._actionStates.get(actionName) === true;
                 const isActive = this.isActionActive(actionName);
+                this._actionStates.set(actionName, isActive);
 
-                if(!wasActive && isActive){
-                    this._dispatchActionEvent(
-                        this.ACTION_ACTIVATED,
-                        actionName
-                    );
-                }
-            });
-        }
-
-        _onKeyUp(event){
-            if(!this.focused){
-                return;
-            }
-
-            const keyCode = event.keyCode;
-
-            if(!this._pressedKeys.has(keyCode)){
-                return;
-            }
-
-            const previousStates = this._getActionStatesByKey(keyCode);
-
-            this._pressedKeys.delete(keyCode);
-
-            if(!this.enabled){
-                return;
-            }
-
-            previousStates.forEach((wasActive, actionName) => {
-                const action = this._actions.get(actionName);
-
-                if(!action || !action.enabled){
+                if(!shouldDispatch || wasActive === isActive){
                     return;
                 }
-
-                const isActive = this.isActionActive(actionName);
-
-                if(wasActive && !isActive){
-                    this._dispatchActionEvent(
-                        this.ACTION_DEACTIVATED,
-                        actionName
-                    );
-                }
+                this._dispatchActionEvent(
+                    isActive ? this.ACTION_ACTIVATED : this.ACTION_DEACTIVATED,
+                    actionName
+                );
             });
-        }
-
-        _getActionStatesByKey(keyCode){
-            const states = new Map();
-
-            this._actions.forEach((action,actionName) => {
-                if(action.keys.has(keyCode)){
-                    states.set(
-                        actionName,
-                        this.isActionActive(actionName)
-                    );
-                }
-            });
-            return states;
         }
 
         _dispatchActionEvent(eventName, actionName){
-            if(
-                !this._target ||
-                !this.enabled ||
-                !this.focused
-            ){
+            if(!this._target || !this.enabled || !this.focused){
                 return;
             }
 
-            const event = new CustomEvent(eventName, {
-                detail: actionName
-            });
-
-            this._target.dispatchEvent(event);
+            const ownerWindow = getWindow(this._target);
+            const CustomEventClass = (ownerWindow && ownerWindow.CustomEvent) || global.CustomEvent;
+            this._target._dispatchEvent(new CustomEventClass(eventName, {
+                datail: actionName
+            }));
         }
 
         _onWindowBlur(){
             this.focused = false;
-
-            this._pressedKeys.clear();
+            this._plugins.forEach((plugin) => {
+                if(typeof plugin.reset === 'function'){
+                    plugin.reset();
+                }
+            });
+            this._refreshActionStates(false);
         }
 
         _onWindowFocus(){
             this.focused = true;
-
-            this._pressedKeys.clear();
+            this._refreshActionStates(false);
         }
 
         _removeListeners(){
-            if(this._target){
-                this._target.removeEventListener(
-                    'keydown',
-                    this._onKeyDown
-                );
-
-                this._target.removeEventListener(
-                    'keyup',
-                    this._onKeyUp
-                );
+            if(this._window){
+                this._window._removeEventListeners('blur', this._onWindowBlur);
+                this._window._removeEventListeners('focus', this._onWindowFocus);
             }
-
-            window.removeEventListener(
-                'blur',
-                this._onWindowBlur
-            );
-
-            window.removeEventListener(
-                'focus',
-                this._onWindowFocus
-            );
+            this._plugins.forEach((plugin) => plugin.detach());
         }
     }
+
+    function isPlagin(plugin){
+        return plugin &&
+            typeof plugin.name === 'string' &&
+            typeof plugin.attach === 'function' &&
+            typeof plugin.detach === 'function' &&
+            typeof plugin.isActionActive === 'function';
+    }
+
+
+    function getWindow(target){
+        return target && target.ownerDocument ? target.ownerDocument.defaultView : global;
+    }
+
+    function hasFocus(target){
+        const documentObject = target && target.ownerDocument ? target.ownerDocument : global.document;
+        return !documentObject || typeof documentObject.hasFocus !== 'function' ? true : documentObject.hasFocus();
+    }
+
     global.InputController = InputController;
 
-})(window);
+    if(typeof module !== 'undefined' && module.exports){
+        module.exports = InputController;
+    }
+})(typeof window!== 'undefined' ? window : globalThis);
