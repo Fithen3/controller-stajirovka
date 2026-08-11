@@ -5,6 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Тестовое Контроллер</title>
     <style>
+
+        .controls{
+            display: flex;
+            flex-wrap: wrap;
+        }
+
         #playground{
             position: relative;
             width: 600px;
@@ -25,12 +31,13 @@
     </style>
 </head>
 <body>
-
-<button id = "attach">attach</button>
-<button id = "detach">detach</button>
-<button id = "enable-controller">enableAction</button>
-<button id = "disable-controller">disableAction</button>
-<button id = "Jump">Jump</button>
+<div class = "controls">
+    <button id = "attach">attach</button>
+    <button id = "detach">detach</button>
+    <button id = "enable-controller">enableAction</button>
+    <button id = "disable-controller">disableAction</button>
+    <button id = "bind-jump">Jump</button>
+</div>
 
 <div id = "result"></div>
 
@@ -39,6 +46,8 @@
 </div>
 
 <script src = "input-controller.js"></script>
+<script src = "keyboard-input-plugin.js"></script>
+<script src = "mouse-input-plugin.js"></script>
 <script src = "input-controller-test.js"></script>
 
 </body>
